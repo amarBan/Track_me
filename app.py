@@ -248,4 +248,196 @@ st.markdown("<p style='color: #8E8E93; font-size: 15px; margin-bottom: 24px;'>Da
 platform = st.radio("Platform", ("YouTube", "Instagram"), horizontal=True, label_visibility="collapsed")
 
 if platform == "Instagram":
-    st.info("⚡ **Instagram Scraper:** Under security overhaul. Use
+    st.info("⚡ **Instagram Scraper:** Under security overhaul. Use YouTube for real-time telemetry.")
+else:
+    col1, col2 = st.columns([2.2, 1.2])
+    with col1:
+        account_input = st.text_input("Channel URL / Handle", placeholder="e.g. @ManojDey or https://youtube.com/channel/...")
+    with col2:
+        keyword_input = st.text_input("Keyword", placeholder="e.g. CoinDCX")
+
+    col3, col4, col5 = st.columns([1, 1, 1])
+    with col3:
+        start_date = st.date_input("Start Date")
+    with col4:
+        end_date = st.date_input("End Date")
+    with col5:
+        st.write("")
+        st.write("")
+        submit_btn = st.button("Run Audit")
+
+    if submit_btn:
+        if account_input and keyword_input:
+            with st.spinner("Extracting uploads and computing telemetry..."):
+                start_dt = datetime.combine(start_date, datetime.min.time())
+                end_dt = datetime.combine(end_date, datetime.max.time())
+                
+                ch_id = resolve_channel_id(account_input)
+                
+                if not ch_id:
+                    st.error("Failed to resolve Channel ID. Verify URL or handle syntax.")
+                else:
+                    df = get_videos_via_playlist(ch_id, keyword_input, start_dt, end_dt)
+                    
+                    if not df.empty:
+                        # Chronological sorting by exact publishing timestamp
+                        df = df.sort_values(by="PublishedAt").reset_index(drop=True)
+                        
+                        # --- KPI Cards ---
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        k1, k2, k3, k4 = st.columns(4)
+                        k1.metric("Matched Videos", f"{len(df):,}")
+                        k2.metric("Total Views", f"{int(df['Views'].sum()):,}")
+                        k3.metric("Total Engagements", f"{int(df['Likes'].sum() + df['Comments'].sum()):,}")
+                        k4.metric("Avg Engagement", f"{df['Engagement Rate (%)'].mean():.2f}%")
+                        
+                        # --- Chart 1: Performance Timeline (Dual Axis Dark) ---
+                        st.markdown("<div class='section-header'>📈 Timeline Telemetry (Views vs Engagement Rate)</div>", unsafe_allow_html=True)
+                        
+                        fig1 = go.Figure()
+                        
+                        # Views - Vibrant Neon Blue Bars with soft rounded tops
+                        fig1.add_trace(go.Bar(
+                            x=df['Timestamp'],
+                            y=df['Views'],
+                            name='Views',
+                            marker=dict(
+                                color='#0A84FF',
+                                line=dict(color='rgba(255,255,255,0.1)', width=1)
+                            ),
+                            opacity=0.88,
+                            customdata=df[['Title', 'Views', 'Engagement Rate (%)']],
+                            hovertemplate=(
+                                "<b>%{customdata[0]}</b><br><br>"
+                                "🗓 Uploaded: %{x}<br>"
+                                "👁 Views: <b>%{customdata[1]:,}</b><br>"
+                                "⚡ Engagement: <b>%{customdata[2]}%</b>"
+                                "<extra></extra>"
+                            )
+                        ))
+                        
+                        # Engagement Rate - Neon Amber Smooth Line
+                        fig1.add_trace(go.Scatter(
+                            x=df['Timestamp'],
+                            y=df['Engagement Rate (%)'],
+                            name='Eng. Rate (%)',
+                            yaxis='y2',
+                            mode='lines+markers',
+                            line=dict(color='#FF9F0A', width=3, shape='spline'),
+                            marker=dict(size=7, color='#FF9F0A', symbol='circle', line=dict(color='#0A0A0C', width=1.5)),
+                            customdata=df[['Title', 'Engagement Rate (%)']],
+                            hovertemplate="⚡ <b>%{customdata[0]}</b><br>Rate: <b>%{customdata[1]}%</b><extra></extra>"
+                        ))
+
+                        fig1.update_layout(
+                            template='plotly_dark',
+                            plot_bgcolor='#111114',
+                            paper_bgcolor='#111114',
+                            hovermode="x unified",
+                            margin=dict(l=20, r=20, t=30, b=40),
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                y=1.02,
+                                xanchor="right",
+                                x=1,
+                                font=dict(color='#8E8E93', size=12)
+                            ),
+                            xaxis=dict(
+                                showgrid=True,
+                                gridcolor='rgba(255,255,255,0.06)',
+                                tickangle=-30,
+                                rangeslider=dict(visible=True, thickness=0.06, bgcolor='#16161A')
+                            ),
+                            yaxis=dict(
+                                title="Views",
+                                titlefont=dict(color='#0A84FF'),
+                                tickfont=dict(color='#0A84FF'),
+                                showgrid=True,
+                                gridcolor='rgba(255,255,255,0.06)'
+                            ),
+                            yaxis2=dict(
+                                title="Eng. Rate (%)",
+                                titlefont=dict(color='#FF9F0A'),
+                                tickfont=dict(color='#FF9F0A'),
+                                overlaying='y',
+                                side='right',
+                                showgrid=False
+                            )
+                        )
+                        st.plotly_chart(fig1, use_container_width=True, config=DARK_PLOT_CONFIG)
+                        
+                        # --- Chart 2: Per-Video Engagement Breakdown (Likes vs Comments) ---
+                        st.markdown("<div class='section-header'>📊 Video-Level Breakdown (Likes vs Comments)</div>", unsafe_allow_html=True)
+                        
+                        fig2 = go.Figure()
+                        
+                        fig2.add_trace(go.Bar(
+                            x=df['Short Title'],
+                            y=df['Likes'],
+                            name='Likes',
+                            marker_color='#FF375F', # Apple Coral / Pink
+                            customdata=df['Title'],
+                            hovertemplate="<b>%{customdata}</b><br>❤️ Likes: <b>%{y:,}</b><extra></extra>"
+                        ))
+                        
+                        fig2.add_trace(go.Bar(
+                            x=df['Short Title'],
+                            y=df['Comments'],
+                            name='Comments',
+                            marker_color='#30D158', # Apple Neon Green
+                            customdata=df['Title'],
+                            hovertemplate="<b>%{customdata}</b><br>💬 Comments: <b>%{y:,}</b><extra></extra>"
+                        ))
+
+                        fig2.update_layout(
+                            template='plotly_dark',
+                            barmode='group',
+                            plot_bgcolor='#111114',
+                            paper_bgcolor='#111114',
+                            hovermode="closest",
+                            margin=dict(l=20, r=20, t=30, b=50),
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                y=1.02,
+                                xanchor="right",
+                                x=1,
+                                font=dict(color='#8E8E93', size=12)
+                            ),
+                            xaxis=dict(
+                                showgrid=False,
+                                tickangle=-30
+                            ),
+                            yaxis=dict(
+                                title="Interactions",
+                                showgrid=True,
+                                gridcolor='rgba(255,255,255,0.06)'
+                            )
+                        )
+                        st.plotly_chart(fig2, use_container_width=True, config=DARK_PLOT_CONFIG)
+                        
+                        # --- Apple Dark Interactive Data Table ---
+                        st.markdown("<div class='section-header'>📋 Video Audit Index</div>", unsafe_allow_html=True)
+                        
+                        display_df = df[['Date', 'Title', 'Views', 'Likes', 'Comments', 'Engagement Rate (%)', 'URL']]
+                        
+                        st.dataframe(
+                            display_df,
+                            use_container_width=True,
+                            hide_index=True,
+                            column_config={
+                                "URL": st.column_config.LinkColumn("Link", display_text="Open ↗"),
+                                "Views": st.column_config.NumberColumn("Views", format="%d"),
+                                "Likes": st.column_config.NumberColumn("Likes", format="%d"),
+                                "Comments": st.column_config.NumberColumn("Comments", format="%d"),
+                                "Engagement Rate (%)": st.column_config.ProgressColumn(
+                                    "Eng. Rate (%)",
+                                    format="%.2f%%",
+                                    min_value=0,
+                                    max_value=max(float(df["Engagement Rate (%)"].max()), 5.0)
+                                )
+                            }
+                        )
+                    else:
+                        st.warning("No videos matched the keyword criteria within this timeframe.")
