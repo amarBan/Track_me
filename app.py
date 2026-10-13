@@ -296,7 +296,7 @@ else:
                         
                         fig1 = go.Figure()
                         
-                        # Views - Vibrant Neon Blue Bars with soft rounded tops
+                        # Views - Vibrant Neon Blue Bars
                         fig1.add_trace(go.Bar(
                             x=df['Timestamp'],
                             y=df['Views'],
@@ -350,15 +350,13 @@ else:
                                 rangeslider=dict(visible=True, thickness=0.06, bgcolor='#16161A')
                             ),
                             yaxis=dict(
-                                title="Views",
-                                titlefont=dict(color='#0A84FF'),
+                                title=dict(text="Views", font=dict(color='#0A84FF')),
                                 tickfont=dict(color='#0A84FF'),
                                 showgrid=True,
                                 gridcolor='rgba(255,255,255,0.06)'
                             ),
                             yaxis2=dict(
-                                title="Eng. Rate (%)",
-                                titlefont=dict(color='#FF9F0A'),
+                                title=dict(text="Eng. Rate (%)", font=dict(color='#FF9F0A')),
                                 tickfont=dict(color='#FF9F0A'),
                                 overlaying='y',
                                 side='right',
@@ -376,7 +374,7 @@ else:
                             x=df['Short Title'],
                             y=df['Likes'],
                             name='Likes',
-                            marker_color='#FF375F', # Apple Coral / Pink
+                            marker_color='#FF375F',
                             customdata=df['Title'],
                             hovertemplate="<b>%{customdata}</b><br>❤️ Likes: <b>%{y:,}</b><extra></extra>"
                         ))
@@ -385,7 +383,7 @@ else:
                             x=df['Short Title'],
                             y=df['Comments'],
                             name='Comments',
-                            marker_color='#30D158', # Apple Neon Green
+                            marker_color='#30D158',
                             customdata=df['Title'],
                             hovertemplate="<b>%{customdata}</b><br>💬 Comments: <b>%{y:,}</b><extra></extra>"
                         ))
@@ -410,7 +408,7 @@ else:
                                 tickangle=-30
                             ),
                             yaxis=dict(
-                                title="Interactions",
+                                title=dict(text="Interactions"),
                                 showgrid=True,
                                 gridcolor='rgba(255,255,255,0.06)'
                             )
